@@ -469,9 +469,15 @@ function allocate(m){
   prop(of(["limit","reserve"]));
   of(["buy"], e => !e.bought).forEach(e => { if(target[e.id] <= left){ plan[e.id] = target[e.id]; left -= target[e.id]; } else short[e.id] = true; });
   prop(of(["save","buffer"]));
+  /* money above the plan is spread over everyday limits, savings and buffer in proportion to their plan */
   let surplus = 0, saveId = null;
-  const se = m.envelopes.find(e => e.kind==="save") || m.envelopes.find(e => e.kind==="buffer");
-  if(se){ saveId = se.id; if(left > 0){ plan[se.id] += left; extra[se.id] = left; surplus = left; left = 0; } }
+  const flex = of(["limit","save","buffer"]);
+  const ft = flex.reduce((a,e) => a + target[e.id], 0);
+  if(left > 0 && ft > 0){
+    const pool = left; let used = 0;
+    flex.forEach((e,i) => { const v = i===flex.length-1 ? pool-used : Math.floor(pool*target[e.id]/ft/10)*10; extra[e.id] = v; plan[e.id] += v; used += v; });
+    surplus = pool; left = 0;
+  }
   const given = Object.values(plan).reduce((a,v) => a + v, 0) - surplus;
   return {inc, plan, target, short, extra, surplus, saveId, need, deficit: Math.max(0, need - given), free: Math.max(0, left)};
 }
@@ -607,7 +613,7 @@ function monthView(m,k){
   const spentPct = k.flexAvail>0 ? Math.min(100, k.flexSpent/k.flexAvail*100) : 0;
   const ahead = spentPct > monthPct + 3;
   const dayText = c.isCurrent ? `${c.day}-й день из ${c.dim}` : c.isPast ? "Месяц завершён" : "Месяц ещё не начался";
-  const third = k.deficit>0 ? ["Не хватает", k.deficit] : ["Сверху в копилку", k.surplus];
+  const third = k.deficit>0 ? ["Не хватает", k.deficit] : ["Сверх плана", k.surplus];
   let h = `<section class="hero" aria-label="Сводка месяца">
     <div class="hero-top"><span class="eyebrow">Можно тратить</span>
       <button class="income-btn num" data-act="budget">Бюджет ${fmt(k.income)} ${I.edit}</button></div>
@@ -658,7 +664,7 @@ function rowHTML(r,c){
     case "save": case "pay": {
       const on = !!e.done;
       let sub = e.kind==="save" ? (on?"Отложено":"Ещё не отложено") : (on?"Оплачено":"Ещё не оплачено");
-      if(r.over > 0) sub += ` · <span class="chip accent">+${fmt(r.over)} с остатка</span>`;
+      if(r.over > 0) sub += ` · <span class="chip accent">+${fmt(r.over)} сверх плана</span>`;
       if(r.cut > 0) sub += ` · <span class="chip honey">урезано на ${fmt(r.cut)}</span>`;
       return `<div class="row ${on?"is-done":""}">
         <button class="check" data-act="toggle" data-id="${id}" aria-pressed="${on}" aria-label="${name}: ${on?"снять отметку":"отметить"}">${I.check}</button>
@@ -714,7 +720,7 @@ function limitRow(r,c,icon,tone,menu){
     if(e.kind==="limit" && c.isCurrent && c.daysLeft>0 && r.left>0) sub += ` · ≈ ${fmt(r.left/c.daysLeft)} в день`;
   }
   if(e.kind==="buffer" && r.extra>0) sub += ` · <span class="chip accent">+${fmt(r.extra)} с покупок</span>`;
-  if(r.over > 0) sub += ` · <span class="chip accent">+${fmt(r.over)} с остатка</span>`;
+  if(r.over > 0) sub += ` · <span class="chip accent">+${fmt(r.over)} сверх плана</span>`;
   if(r.cut > 0) sub += ` · <span class="chip honey">урезано на ${fmt(r.cut)}</span>`;
   return `<div class="row">
     <div class="ic ${tone}">${icon}</div>
@@ -922,7 +928,7 @@ function sheetBudget(){
       <label class="field"><span>Добавить к бюджету, ₽</span><input class="input num" id="bud-add" inputmode="decimal" placeholder="Например, 15 000"></label>
       <p class="pc-head">Как распределится</p>
       <div id="bud-prev" aria-live="polite"></div>
-      <p class="ps-note soft">Сначала обязательные платежи и занятия, потом лимиты и резерв, потом покупки, затем накопления и буфер. Если денег меньше плана, первыми уменьшаются последние. Всё, что сверху, идёт в копилку.</p>
+      <p class="ps-note soft">Сначала обязательные платежи и занятия, потом лимиты и резерв, потом покупки, затем накопления и буфер. Если денег меньше плана, первыми уменьшаются последние. Если больше, лишнее делится между лимитами, накоплениями и буфером пропорционально их сумме.</p>
       <button class="btn primary" type="submit">Распределить</button>
     </form>`, b => {
     const tot = b.querySelector("#bud-total"), add = b.querySelector("#bud-add");
@@ -942,7 +948,7 @@ function sheetBudget(){
       h += `</div><div class="plan-sum" style="margin-top:10px"><div class="ps-row"><span>Запланировано по статьям</span><b class="num">${fmt(al.need)}</b></div>
         <div class="ps-row"><span>Денег на месяц</span><b class="num">${fmt(al.inc)}</b></div>
         ${al.deficit > 0 ? `<div class="ps-row bad"><span>Не хватает</span><b class="num">${fmt(al.deficit)}</b></div>`
-          : `<div class="ps-row ok"><span>Сверху в копилку</span><b class="num">${fmt(al.surplus)}</b></div>`}</div>`;
+          : `<div class="ps-row ok"><span>Сверх плана, разделено по статьям</span><b class="num">${fmt(al.surplus)}</b></div>`}</div>`;
       b.querySelector("#bud-prev").innerHTML = h;
     };
     tot.addEventListener("input", preview); add.addEventListener("input", preview); preview();
