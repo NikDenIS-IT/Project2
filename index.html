@@ -613,7 +613,7 @@ function monthView(m,k){
   const spentPct = k.flexAvail>0 ? Math.min(100, k.flexSpent/k.flexAvail*100) : 0;
   const ahead = spentPct > monthPct + 3;
   const dayText = c.isCurrent ? `${c.day}-й день из ${c.dim}` : c.isPast ? "Месяц завершён" : "Месяц ещё не начался";
-  const third = k.deficit>0 ? ["Не хватает", k.deficit] : ["Сверх плана", k.surplus];
+  const third = ["Распределено", k.distributed];
   let h = `<section class="hero" aria-label="Сводка месяца">
     <div class="hero-top"><span class="eyebrow">Можно тратить</span>
       <button class="income-btn num" data-act="budget">Бюджет ${fmt(k.income)} ${I.edit}</button></div>
@@ -634,11 +634,6 @@ function monthView(m,k){
   </section>`;
   if(k.income <= 0){
     h += `<div class="cta"><div class="ic accent">${I.wallet}</div><p><b>Сколько денег на месяц?</b>Впишите сумму, и сайт сам распределит её по всем статьям.</p><button class="btn primary" data-act="budget">Внести</button></div>`;
-  } else if(k.deficit > 0){
-    const shorts = k.rows.filter(r => r.short), cuts = k.rows.filter(r => r.cut > 0);
-    h += `<div class="cta warn"><div class="ic honey">${I.info}</div><p><b>Не хватает ${fmt(k.deficit)} до полного плана</b>${
-      cuts.length ? `Урезано: ${cuts.map(r => esc(r.e.name)).join(", ")}. ` : ""}${
-      shorts.length ? `Не хватило на: ${shorts.map(r => esc(r.e.name)).join(", ")}, их можно перенести на следующий месяц.` : ""}</p><button class="btn ghost" data-act="budget">Подробнее</button></div>`;
   }
   GROUPS.forEach(g => {
     const rows = k.rows.filter(r => g.kinds.includes(r.e.kind));
@@ -664,8 +659,7 @@ function rowHTML(r,c){
     case "save": case "pay": {
       const on = !!e.done;
       let sub = e.kind==="save" ? (on?"Отложено":"Ещё не отложено") : (on?"Оплачено":"Ещё не оплачено");
-      if(r.over > 0) sub += ` · <span class="chip accent">+${fmt(r.over)} сверх плана</span>`;
-      if(r.cut > 0) sub += ` · <span class="chip honey">урезано на ${fmt(r.cut)}</span>`;
+
       return `<div class="row ${on?"is-done":""}">
         <button class="check" data-act="toggle" data-id="${id}" aria-pressed="${on}" aria-label="${name}: ${on?"снять отметку":"отметить"}">${I.check}</button>
         <div class="row-main"><div class="row-name">${name}</div><div class="row-sub">${sub}</div></div>
@@ -697,7 +691,7 @@ function rowHTML(r,c){
           <div class="row-main"><div class="row-name">${name}</div><div class="row-sub">Перенесено на следующий месяц</div></div>
           <button class="link-btn" data-act="unmove" data-id="${id}">Вернуть</button>${menu}</div>`;
       }
-      const on = !!e.bought; let sub = r.short ? '<span class="chip danger">Не хватает денег</span> · можно перенести' : "Запланировано";
+      const on = !!e.bought; let sub = r.short ? '<span class="chip honey">Не помещается в бюджет</span> · можно перенести' : "Запланировано";
       if(on){ const d = (e.planned||0) - (e.actual ?? e.planned ?? 0);
         sub = d>0 ? `Куплено · <b>+${fmt(d)}</b> в буфер` : d<0 ? `Куплено · дороже на ${fmt(-d)}` : "Куплено"; }
       return `<div class="row ${on?"is-done":""}">
@@ -720,8 +714,7 @@ function limitRow(r,c,icon,tone,menu){
     if(e.kind==="limit" && c.isCurrent && c.daysLeft>0 && r.left>0) sub += ` · ≈ ${fmt(r.left/c.daysLeft)} в день`;
   }
   if(e.kind==="buffer" && r.extra>0) sub += ` · <span class="chip accent">+${fmt(r.extra)} с покупок</span>`;
-  if(r.over > 0) sub += ` · <span class="chip accent">+${fmt(r.over)} сверх плана</span>`;
-  if(r.cut > 0) sub += ` · <span class="chip honey">урезано на ${fmt(r.cut)}</span>`;
+
   return `<div class="row">
     <div class="ic ${tone}">${icon}</div>
     <button class="row-main" data-act="open" data-id="${esc(e.id)}"><div class="row-name">${esc(e.name)}</div><div class="row-sub">${sub}</div></button>
@@ -928,7 +921,7 @@ function sheetBudget(){
       <label class="field"><span>Добавить к бюджету, ₽</span><input class="input num" id="bud-add" inputmode="decimal" placeholder="Например, 15 000"></label>
       <p class="pc-head">Как распределится</p>
       <div id="bud-prev" aria-live="polite"></div>
-      <p class="ps-note soft">Сначала обязательные платежи и занятия, потом лимиты и резерв, потом покупки, затем накопления и буфер. Если денег меньше плана, первыми уменьшаются последние. Если больше, лишнее делится между лимитами, накоплениями и буфером пропорционально их сумме.</p>
+      <p class="ps-note soft">Сайт делит деньги по порядку: обязательные платежи и занятия, лимиты на жизнь и резерв, покупки, затем накопления и буфер. Сколько получит каждая статья, зависит от суммы, которую вы внесли.</p>
       <button class="btn primary" type="submit">Распределить</button>
     </form>`, b => {
     const tot = b.querySelector("#bud-total"), add = b.querySelector("#bud-add");
@@ -939,16 +932,13 @@ function sheetBudget(){
       let h = '<div class="pc-list">';
       GROUPS.forEach(g => d.envelopes.filter(e => g.kinds.includes(e.kind) && al.target[e.id] > 0).forEach(e => {
         const v = al.plan[e.id], t = al.target[e.id], x = al.extra[e.id]||0;
-        let note = "", cls = "";
-        if(al.short[e.id]){ note = "не хватает, можно перенести"; cls = "bad"; }
-        else if(x > 0){ note = `${fmt(t)} + ${fmt(x)} сверху`; cls = "save"; }
-        else if(v < t){ note = `урезано, план ${fmt(t)}`; cls = "bad"; }
+        const note = al.short[e.id] ? "не помещается в бюджет, можно перенести" : "", cls = "";
         h += `<div class="pc-row ${cls}"><span>${esc(e.name)}${note?`<small>${note}</small>`:""}</span><b class="num">${fmt(v)}</b></div>`;
       }));
-      h += `</div><div class="plan-sum" style="margin-top:10px"><div class="ps-row"><span>Запланировано по статьям</span><b class="num">${fmt(al.need)}</b></div>
-        <div class="ps-row"><span>Денег на месяц</span><b class="num">${fmt(al.inc)}</b></div>
-        ${al.deficit > 0 ? `<div class="ps-row bad"><span>Не хватает</span><b class="num">${fmt(al.deficit)}</b></div>`
-          : `<div class="ps-row ok"><span>Сверх плана, разделено по статьям</span><b class="num">${fmt(al.surplus)}</b></div>`}</div>`;
+      const dist = Object.values(al.plan).reduce((a,v) => a + v, 0);
+      h += `</div><div class="plan-sum" style="margin-top:10px"><div class="ps-row"><span>Денег на месяц</span><b class="num">${fmt(al.inc)}</b></div>
+        <div class="ps-row ok"><span>Распределено по статьям</span><b class="num">${fmt(dist)}</b></div>
+        ${al.free > 0 ? `<div class="ps-row"><span>Свободно</span><b class="num">${fmt(al.free)}</b></div>` : ""}</div>`;
       b.querySelector("#bud-prev").innerHTML = h;
     };
     tot.addEventListener("input", preview); add.addEventListener("input", preview); preview();
