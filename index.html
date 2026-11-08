@@ -289,6 +289,7 @@ fieldset{border:0;margin:0;padding:0;min-width:0}
 .pay-s.bad{color:var(--danger);font-weight:700} .pay-s.ok{color:var(--accent);font-weight:700}
 .cta{display:flex;gap:12px;align-items:center;background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:14px;margin-top:12px}
 .cta p{margin:0;font-size:13px;color:var(--muted)} .cta b{display:block;color:var(--ink);font-size:14px;margin-bottom:2px}
+.cta.warn{box-shadow:inset 0 0 0 1.5px var(--honey),var(--shadow)}
 .cta .btn{padding:10px 14px;font-size:14px;flex:none}
 .plan-list{border:1px solid var(--line);border-radius:16px;overflow:hidden}
 .plan-row{padding:12px;border-top:1px solid var(--line)} .plan-row:first-child{border-top:0}
@@ -406,11 +407,11 @@ const TEMPLATE = {income:38000, envelopes:[
   {name:"Футболка для работы", kind:"buy", planned:0, moved:true},
   {name:"Брови", kind:"buy", planned:2300},
   {name:"Кухонные часы", kind:"buy", planned:800},
-  {name:"Питание для себя", kind:"limit", planned:6000, auto:true, share:41},
-  {name:"Развлечения", kind:"limit", planned:2000, auto:true, share:14},
-  {name:"Золотое яблоко", kind:"limit", planned:1500, auto:true, share:10},
-  {name:"Транспорт / мелочи", kind:"limit", planned:2000, auto:true, share:14},
-  {name:"Буфер на непредвиденное", kind:"buffer", planned:3200, auto:true, share:21}
+  {name:"Питание для себя", kind:"limit", planned:6000},
+  {name:"Развлечения", kind:"limit", planned:2000},
+  {name:"Золотое яблоко", kind:"limit", planned:1500},
+  {name:"Транспорт / мелочи", kind:"limit", planned:2000},
+  {name:"Буфер на непредвиденное", kind:"buffer", planned:3200}
 ]};
 
 const S = { mode:"loading", user:null, authMode:"in", months:{}, view:null, tab:"month", filter:"all", note:"", lastEnv:null };
@@ -446,88 +447,41 @@ function ctx(key){
   let day; if(key === cur) day = new Date().getDate(); else if(key < cur) day = dim + 1; else day = 0;
   return {y, m, dim, day, isCurrent:key===cur, isPast:key<cur, daysLeft: key===cur ? dim-day+1 : (key<cur?0:dim)};
 }
-const prevKey = k => { const [y,m]=k.split("-").map(Number); return m===1 ? (y-1)+"-12" : y+"-"+pad(m-1); };
-const hasPay = m => !!(m && m.pay);
-const incomeOf = m => hasPay(m) ? (m.pay.p10||0) + (m.pay.p25||0) : (m.income||0);
-const canShare = k => k==="save" || k==="limit" || k==="buffer";
-const isAuto = e => canShare(e.kind) && !!e.auto;
+const incomeOf = m => m.income||0;
 const baseOf = e => e.kind==="visits" ? (e.count||0)*(e.price||0) : (e.kind==="buy" && e.moved ? 0 : (e.planned||0));
 const unlocked = (e,c) => c.day >= (e.lockDay||1);
-const SRC = [["auto","Авто"],["p10","С 10-го"],["p25","С 25-го"],["split","Пополам"]];
-const isLump = e => (e.src||"auto")==="auto" && (e.kind==="pay" || e.kind==="buy" || e.kind==="reserve");
-function distribute(autos, pool, sumW, out){
-  const ws = autos.filter(e => (e.share||0) > 0); let used = 0;
-  autos.forEach(e => { out[e.id] = 0; });
-  ws.forEach((e,i) => { const v = i===ws.length-1 ? pool-used : Math.round(pool*e.share/sumW/50)*50; out[e.id] = Math.max(0, v); used += out[e.id]; });
-}
-function ratioFor(e, m){
-  const src = e.src || "auto";
-  if(src==="p10") return 1; if(src==="p25") return 0; if(src==="split") return .5;
-  if(e.kind==="save") return .5;
-  const dim = ctx(m.key).dim; return 15/(15 + dim - 24 + 9);
-}
+/* Smart distribution of one month's money.
+   Order: payments and classes -> everyday limits and reserve -> one-off purchases (whole items only)
+   -> savings and buffer. If money runs short, the later tiers shrink first; anything above the plan goes to savings. */
 function allocate(m){
-  const plan = {}, parts = {}, asg = {};
-  const autos = m.envelopes.filter(isAuto);
-  const sumW = autos.reduce((a,e) => a + Math.max(0, e.share||0), 0);
-  m.envelopes.forEach(e => { parts[e.id] = {a:0, b:0}; });
-  if(!hasPay(m)){
-    const inc = m.income||0; let fixed = 0;
-    m.envelopes.forEach(e => { if(!isAuto(e)){ plan[e.id] = baseOf(e); fixed += plan[e.id]; } });
-    distribute(autos, Math.max(0, inc-fixed), sumW, plan);
-    m.envelopes.forEach(e => { plan[e.id] = plan[e.id]||0; parts[e.id] = {a:plan[e.id], b:0}; });
-    return {pay:false, inc, fixed, rem:inc-fixed, sumW, plan, parts, asg, autoCount:autos.length, per:null};
-  }
-  const P = {a:m.pay.p10||0, b:m.pay.p25||0}, load = {a:0, b:0};
-  let fixed = 0;
-  m.envelopes.forEach(e => {
-    if(isAuto(e) || isLump(e)) return;
-    const v = baseOf(e), a = Math.round(v*ratioFor(e, m));
-    fixed += v; parts[e.id] = {a, b:v-a}; load.a += a; load.b += v-a;
-  });
-  m.envelopes.filter(isLump).sort((x,y) => baseOf(y) - baseOf(x)).forEach(e => {
-    const v = baseOf(e); fixed += v;
-    if(load.a <= load.b){ asg[e.id] = "p10"; parts[e.id].a = v; load.a += v; } else { asg[e.id] = "p25"; parts[e.id].b = v; load.b += v; }
-  });
-  const saveEnv = m.envelopes.find(e => e.kind==="save") || m.envelopes.find(e => e.kind==="buffer");
-  const per = {};
-  ["a","b"].forEach(X => {
-    const used = m.envelopes.reduce((t,e) => t + parts[e.id][X], 0);
-    const rem = P[X] - used;
-    const r = {amount:P[X], entered:P[X]>0, fixed:used, rem, toSave:0, free:0, deficit:0, auto:0};
-    if(r.entered){
-      if(rem < 0) r.deficit = -rem;
-      else if(sumW > 0){ const tmp = {}; distribute(autos, rem, sumW, tmp); autos.forEach(e => { parts[e.id][X] += tmp[e.id]||0; }); r.auto = rem; }
-      else if(rem > 0 && saveEnv){ parts[saveEnv.id][X] += rem; r.toSave = rem; }
-      else r.free = rem;
-    }
-    per[X] = r;
-  });
-  m.envelopes.forEach(e => { plan[e.id] = parts[e.id].a + parts[e.id].b; });
-  return {pay:true, inc:P.a+P.b, fixed, rem:P.a+P.b-fixed, sumW, plan, parts, asg, autoCount:autos.length, per, saveId: saveEnv && saveEnv.id};
+  const inc = incomeOf(m), plan = {}, target = {}, short = {}, extra = {};
+  let left = inc, need = 0;
+  m.envelopes.forEach(e => { target[e.id] = baseOf(e); plan[e.id] = 0; need += target[e.id]; });
+  const of = (kinds, f) => m.envelopes.filter(e => kinds.includes(e.kind) && target[e.id] > 0 && (!f || f(e)));
+  const prop = list => {
+    const t = list.reduce((a,e) => a + target[e.id], 0); if(t <= 0) return;
+    if(left >= t){ list.forEach(e => { plan[e.id] = target[e.id]; }); left -= t; return; }
+    const pool = Math.max(0, left), k = pool / t; let used = 0;
+    list.forEach((e,i) => { const v = i===list.length-1 ? pool-used : Math.floor(target[e.id]*k/10)*10; plan[e.id] = Math.max(0, Math.min(target[e.id], v)); used += plan[e.id]; });
+    left -= used;
+  };
+  prop([...of(["pay","visits"]), ...of(["buy"], e => e.bought)]);
+  prop(of(["limit","reserve"]));
+  of(["buy"], e => !e.bought).forEach(e => { if(target[e.id] <= left){ plan[e.id] = target[e.id]; left -= target[e.id]; } else short[e.id] = true; });
+  prop(of(["save","buffer"]));
+  let surplus = 0, saveId = null;
+  const se = m.envelopes.find(e => e.kind==="save") || m.envelopes.find(e => e.kind==="buffer");
+  if(se){ saveId = se.id; if(left > 0){ plan[se.id] += left; extra[se.id] = left; surplus = left; left = 0; } }
+  const given = Object.values(plan).reduce((a,v) => a + v, 0) - surplus;
+  return {inc, plan, target, short, extra, surplus, saveId, need, deficit: Math.max(0, need - given), free: Math.max(0, left)};
 }
-/* first time paychecks are used: flexible limits switch to shares in proportion to their old amounts */
-function migrateShares(mm){
-  if(mm.envelopes.some(isAuto)) return;
-  const flex = mm.envelopes.filter(e => (e.kind==="limit" || e.kind==="buffer"));
-  const tot = flex.reduce((a,e) => a + (e.planned||0), 0);
-  flex.forEach(e => { e.auto = true; e.share = tot > 0 ? Math.max(1, Math.round((e.planned||0)/tot*100)) : 10; });
-}
-const periodOfDay = d => (d>=10 && d<=24) ? "a" : "b";
-function calc(m, force){
-  const c = ctx(m.key), al = allocate(m), by = {}, byA = {};
-  (m.expenses||[]).forEach(x => {
-    by[x.env] = (by[x.env]||0) + (x.amount||0);
-    if(periodOfDay(Number(String(x.date||"").slice(8,10))) === "a") byA[x.env] = (byA[x.env]||0) + (x.amount||0);
-  });
-  const pay = hasPay(m);
-  let period = null, daysLeftP = 0;
-  if(force){ period = force.period; daysLeftP = force.daysLeft; }
-  else if(pay && c.isCurrent && c.day >= 10){ period = c.day <= 24 ? "a" : "b"; daysLeftP = period==="a" ? 24-c.day+1 : c.dim-c.day+1+9; }
+function calc(m){
+  const c = ctx(m.key), al = allocate(m), by = {};
+  (m.expenses||[]).forEach(x => { by[x.env] = (by[x.env]||0) + (x.amount||0); });
   let buySave = 0;
   m.envelopes.forEach(e => { if(e.kind==="buy" && e.bought && !e.moved) buySave += (e.planned||0) - (e.actual ?? e.planned ?? 0); });
   const rows = m.envelopes.map(e => {
-    const plan = al.plan[e.id] || 0; let spent = 0, avail = plan, extra = 0;
+    const plan = al.plan[e.id] || 0, target = al.target[e.id] || 0; let spent = 0, avail = plan, extra = 0;
     switch(e.kind){
       case "save": case "pay": spent = e.done ? plan : 0; break;
       case "visits": spent = (e.visits||0)*(e.price||0); break;
@@ -535,25 +489,18 @@ function calc(m, force){
       case "buffer": spent = by[e.id]||0; extra = buySave; avail = plan + buySave; break;
       default: spent = by[e.id]||0;
     }
-    const parts = al.parts[e.id] || {a:plan, b:0};
-    let pLeft = null;
-    if(period==="a") pLeft = parts.a + extra - (byA[e.id]||0);
-    else if(period==="b") pLeft = avail - spent;
-    return {e, plan, spent, avail, left: avail - spent, extra, parts, pLeft};
+    const short = !!al.short[e.id], over = al.extra[e.id] || 0;
+    return {e, plan, target, spent, avail, left: avail - spent, extra, short, over, cut: short ? 0 : Math.max(0, target - (plan - over)), pLeft:null};
   });
-  let distributed=0, saved=0, spent=0, canSpend=0, flexAvail=0, flexSpent=0, A=0, B=0, periodCan=0;
+  let distributed=0, saved=0, spent=0, canSpend=0, flexAvail=0, flexSpent=0;
   rows.forEach(r => {
-    distributed += r.plan; A += r.parts.a; B += r.parts.b;
+    distributed += r.plan;
     if(r.e.kind==="save") saved += r.spent; else spent += r.spent;
     const flex = r.e.kind==="limit" || r.e.kind==="buffer" || (r.e.kind==="reserve" && unlocked(r.e,c));
-    if(flex){ canSpend += Math.max(0, r.left); if(r.pLeft!=null) periodCan += Math.max(0, r.pLeft); }
+    if(flex) canSpend += Math.max(0, r.left);
     if(r.e.kind==="limit" || r.e.kind==="buffer"){ flexAvail += r.avail; flexSpent += r.spent; }
   });
-  const inc = al.inc;
-  const deficit = al.per ? al.per.a.deficit + al.per.b.deficit : Math.max(0, al.fixed - inc);
-  const extraSave = al.per ? al.per.a.toSave + al.per.b.toSave + al.per.a.free + al.per.b.free : 0;
-  return {c, rows, al, pay, period, daysLeftP, periodCan, A, B, distributed, saved, spent, canSpend, flexAvail, flexSpent,
-    income:inc, unassigned: inc - distributed, deficit, extraSave, buySave};
+  return {c, rows, al, distributed, saved, spent, canSpend, flexAvail, flexSpent, income: al.inc, deficit: al.deficit, surplus: al.surplus, buySave};
 }
 
 /* ---------- rendering ---------- */
@@ -655,43 +602,23 @@ function emptyState(){
 let PCTX = null;
 function monthView(m,k){
   const c = k.c;
-  const nextG = MONTHS_G[c.m % 12];
-  let hk = k, heroEyebrow = "Можно тратить", heroNum = k.canSpend, heroCap = "остаток во всех лимитах и буфере", perDay = c.isCurrent && c.daysLeft>0 ? k.canSpend/c.daysLeft : 0;
-  PCTX = null;
-  let heroMissing = null;
-  if(k.period && !k.al.per[k.period].entered){
-    heroMissing = k.period;
-    heroEyebrow = `Зарплата ${k.period==="a"?"10-го":"25-го"} ещё не внесена`; heroNum = null; perDay = 0;
-    heroCap = "Внесите сумму, и сайт распределит её по статьям этого периода";
-  } else if(k.period){
-    const end = k.period==="a" ? `24 ${MONTHS_G[c.m-1]}` : `9 ${nextG}`;
-    heroEyebrow = `Можно тратить до ${end}`; heroNum = k.periodCan; perDay = k.daysLeftP>0 ? k.periodCan/k.daysLeftP : 0;
-    heroCap = `зарплата ${k.period==="a"?"25-го":"10-го"} через ${k.daysLeftP} ${plural(k.daysLeftP,"день","дня","дней")}`;
-    PCTX = {end, days:k.daysLeftP};
-  } else if(k.pay && c.isCurrent && c.day < 10){
-    const pm = S.months[prevKey(m.key)];
-    if(hasPay(pm) && (pm.pay.p25||0) > 0){
-      const dl = 10 - c.day, pk = calc(pm, {period:"b", daysLeft:dl});
-      heroEyebrow = "До зарплаты 10-го"; heroNum = pk.periodCan; perDay = pk.periodCan/dl;
-      heroCap = `остаток с зарплаты 25 ${MONTHS_G[pk.c.m-1]} · ${dl} ${plural(dl,"день","дня","дней")}`;
-    }
-  }
+  const perDay = c.isCurrent && c.daysLeft>0 ? k.canSpend/c.daysLeft : 0;
   const monthPct = c.isPast ? 100 : c.isCurrent ? Math.min(100,(c.day-0.5)/c.dim*100) : 0;
   const spentPct = k.flexAvail>0 ? Math.min(100, k.flexSpent/k.flexAvail*100) : 0;
   const ahead = spentPct > monthPct + 3;
   const dayText = c.isCurrent ? `${c.day}-й день из ${c.dim}` : c.isPast ? "Месяц завершён" : "Месяц ещё не начался";
-  const third = k.deficit>0 ? ["Не хватает", k.deficit] : k.pay ? ["Отложить сверху", k.extraSave] : k.unassigned<0 ? ["Сверх бюджета", -k.unassigned] : ["Не распределено", k.unassigned];
+  const third = k.deficit>0 ? ["Не хватает", k.deficit] : ["Сверху в копилку", k.surplus];
   let h = `<section class="hero" aria-label="Сводка месяца">
-    <div class="hero-top"><span class="eyebrow">${esc(heroEyebrow)}</span>
-      <button class="income-btn num" data-act="plan">План · ${fmt(k.income)} ${I.edit}</button></div>
-    ${heroMissing ? `<button class="btn hero-btn" data-act="paycheck" data-id="${heroMissing}">${I.plus} Внести зарплату ${heroMissing==="a"?"10-го":"25-го"}</button>` : `<div class="hero-num num">${fmt(heroNum)}</div>`}
-    <p class="hero-cap">${esc(heroCap)}${perDay>0 ? ` · ≈ ${fmt(perDay)} в день` : ""}</p>
+    <div class="hero-top"><span class="eyebrow">Можно тратить</span>
+      <button class="income-btn num" data-act="budget">Бюджет ${fmt(k.income)} ${I.edit}</button></div>
+    <div class="hero-num num">${fmt(k.canSpend)}</div>
+    <p class="hero-cap">остаток во всех лимитах и буфере${perDay>0 ? ` · ≈ ${fmt(perDay)} в день` : ""}</p>
     <div class="pace">
       <div class="pace-bar" role="img" aria-label="Лимиты потрачены на ${Math.round(spentPct)}%, прошло ${Math.round(monthPct)}% месяца">
         <div class="pace-fill ${ahead?"ahead":""}" style="width:${spentPct}%"></div>
         ${c.isCurrent ? `<div class="pace-mark" style="left:${monthPct}%"></div>` : ""}
       </div>
-      <div class="pace-legend"><span>Лимиты месяца потрачены на ${Math.round(spentPct)}%</span><span>${dayText}</span></div>
+      <div class="pace-legend"><span>Лимиты потрачены на ${Math.round(spentPct)}%</span><span>${dayText}</span></div>
     </div>
     <dl class="hero-stats num">
       <div><dt>Потрачено</dt><dd>${fmt(k.spent)}</dd></div>
@@ -699,21 +626,13 @@ function monthView(m,k){
       <div><dt>${third[0]}</dt><dd>${fmt(third[1])}</dd></div>
     </dl>
   </section>`;
-  if(k.pay){
-    const card = (id, title) => {
-      const r = k.al.per[id], now = k.period===id ? '<span class="chip accent">сейчас</span>' : "";
-      if(!r.entered) return `<button class="pay pending ${k.period===id?"active":""}" data-act="paycheck" data-id="${id}"><span class="pay-t"><span>${title}</span>${now}</span>
-        <span class="pay-a">Не внесена</span><span class="pay-s">ждёт ${fmt(r.fixed)} обязательных</span><span class="pay-s ok">${I.plus} Внести сумму</span></button>`;
-      const st = r.deficit > 5 ? `<span class="pay-s bad">не хватает ${fmt(r.deficit)}</span>`
-        : r.toSave > 5 ? `<span class="pay-s ok">в копилку +${fmt(r.toSave)}</span>`
-        : r.free > 5 ? `<span class="pay-s">свободно ${fmt(r.free)}</span>`
-        : `<span class="pay-s ok">распределена полностью</span>`;
-      return `<button class="pay ${k.period===id?"active":""}" data-act="paycheck" data-id="${id}"><span class="pay-t"><span>${title}</span>${now}</span>
-        <span class="pay-a num">${fmt(r.amount)}</span><span class="pay-s num">обязательное ${fmt(Math.min(r.fixed, r.amount))}</span>${st}</button>`;
-    };
-    h += `<div class="paystrip">${card("a","Зарплата 10-го")}${card("b","Зарплата 25-го")}</div>`;
-  } else {
-    h += `<div class="cta"><div class="ic accent">${I.wallet}</div><p><b>Зарплаты 10-го и 25-го</b>Вносите сумму, когда пришла зарплата, и сайт сам распределит её по статьям.</p><button class="btn primary" data-act="paycheck" data-id="${c.isCurrent && c.day>=10 && c.day<=24 ? "a" : "b"}">Внести</button></div>`;
+  if(k.income <= 0){
+    h += `<div class="cta"><div class="ic accent">${I.wallet}</div><p><b>Сколько денег на месяц?</b>Впишите сумму, и сайт сам распределит её по всем статьям.</p><button class="btn primary" data-act="budget">Внести</button></div>`;
+  } else if(k.deficit > 0){
+    const shorts = k.rows.filter(r => r.short), cuts = k.rows.filter(r => r.cut > 0);
+    h += `<div class="cta warn"><div class="ic honey">${I.info}</div><p><b>Не хватает ${fmt(k.deficit)} до полного плана</b>${
+      cuts.length ? `Урезано: ${cuts.map(r => esc(r.e.name)).join(", ")}. ` : ""}${
+      shorts.length ? `Не хватило на: ${shorts.map(r => esc(r.e.name)).join(", ")}, их можно перенести на следующий месяц.` : ""}</p><button class="btn ghost" data-act="budget">Подробнее</button></div>`;
   }
   GROUPS.forEach(g => {
     const rows = k.rows.filter(r => g.kinds.includes(r.e.kind));
@@ -738,7 +657,9 @@ function rowHTML(r,c){
   switch(e.kind){
     case "save": case "pay": {
       const on = !!e.done;
-      const sub = e.kind==="save" ? (on?"Отложено":"Ещё не отложено") : (on?"Оплачено":"Ещё не оплачено");
+      let sub = e.kind==="save" ? (on?"Отложено":"Ещё не отложено") : (on?"Оплачено":"Ещё не оплачено");
+      if(r.over > 0) sub += ` · <span class="chip accent">+${fmt(r.over)} с остатка</span>`;
+      if(r.cut > 0) sub += ` · <span class="chip honey">урезано на ${fmt(r.cut)}</span>`;
       return `<div class="row ${on?"is-done":""}">
         <button class="check" data-act="toggle" data-id="${id}" aria-pressed="${on}" aria-label="${name}: ${on?"снять отметку":"отметить"}">${I.check}</button>
         <div class="row-main"><div class="row-name">${name}</div><div class="row-sub">${sub}</div></div>
@@ -770,7 +691,7 @@ function rowHTML(r,c){
           <div class="row-main"><div class="row-name">${name}</div><div class="row-sub">Перенесено на следующий месяц</div></div>
           <button class="link-btn" data-act="unmove" data-id="${id}">Вернуть</button>${menu}</div>`;
       }
-      const on = !!e.bought; let sub = "Запланировано";
+      const on = !!e.bought; let sub = r.short ? '<span class="chip danger">Не хватает денег</span> · можно перенести' : "Запланировано";
       if(on){ const d = (e.planned||0) - (e.actual ?? e.planned ?? 0);
         sub = d>0 ? `Куплено · <b>+${fmt(d)}</b> в буфер` : d<0 ? `Куплено · дороже на ${fmt(-d)}` : "Куплено"; }
       return `<div class="row ${on?"is-done":""}">
@@ -793,6 +714,8 @@ function limitRow(r,c,icon,tone,menu){
     if(e.kind==="limit" && c.isCurrent && c.daysLeft>0 && r.left>0) sub += ` · ≈ ${fmt(r.left/c.daysLeft)} в день`;
   }
   if(e.kind==="buffer" && r.extra>0) sub += ` · <span class="chip accent">+${fmt(r.extra)} с покупок</span>`;
+  if(r.over > 0) sub += ` · <span class="chip accent">+${fmt(r.over)} с остатка</span>`;
+  if(r.cut > 0) sub += ` · <span class="chip honey">урезано на ${fmt(r.cut)}</span>`;
   return `<div class="row">
     <div class="ic ${tone}">${icon}</div>
     <button class="row-main" data-act="open" data-id="${esc(e.id)}"><div class="row-name">${esc(e.name)}</div><div class="row-sub">${sub}</div></button>
@@ -892,17 +815,9 @@ function sheetExpense(pre){
       const note = b.querySelector("#exp-note").value.trim();
       const date = b.querySelector("#exp-date").value || defDate;
       S.lastEnv = env; lsSet("konverty.lastEnv", env);
-      const envObj = m.envelopes.find(e=>e.id===env) || {};
-      let target = S.view, envId = env;
-      const pk = prevKey(S.view), pm = S.months[pk];
-      if(hasPay(m) && date.slice(0,7)===S.view && Number(date.slice(8,10)) < 10 && hasPay(pm)){
-        const twin = pm.envelopes.find(e => e.name===envObj.name && e.kind===envObj.kind);
-        if(twin){ target = pk; envId = twin.id; }
-      }
-      S.months[target].expenses.push({id:uid(), env:envId, amount:Math.round(amt*100)/100, note, date, ts:Date.now()});
-      persist(target); render();
+      mutate(mm => mm.expenses.push({id:uid(), env, amount:Math.round(amt*100)/100, note, date, ts:Date.now()}));
       closeSheet();
-      toast(target===S.view ? `Записано: ${fmt(amt)} · ${envObj.name}` : `Записано в период с 25 ${MONTHS_G[Number(pk.slice(5))-1]}: ${fmt(amt)} · ${envObj.name}`);
+      toast(`Записано: ${fmt(amt)} · ${(m.envelopes.find(e=>e.id===env)||{}).name}`);
     });
   });
 }
@@ -930,10 +845,8 @@ function sheetEnvEdit(id){
       <fieldset><legend class="legend-t">Тип</legend><div class="pick" id="env-kinds">
         ${Object.entries(KINDS).map(([kk,v])=>`<label><input type="radio" name="kind" value="${kk}" ${e.kind===kk?"checked":""}><span class="opt">${v.label}</span></label>`).join("")}
       </div><p class="kind-hint" id="kind-hint"></p></fieldset>
-      <label class="field" id="w-mode"><span>Как считать сумму</span><select class="input" id="env-mode"><option value="fix" ${e.auto?"":"selected"}>Точная сумма</option><option value="share" ${e.auto?"selected":""}>Доля от остатка, %</option></select></label>
-      <label class="field" id="w-amount"><span id="amt-lbl">Сумма на месяц, ₽</span><input class="input num" id="env-amount" inputmode="decimal" value="${e.auto ? (e.share??"") : (e.planned??"")}" placeholder="0"></label>
+      <label class="field" id="w-amount"><span>Сумма на месяц, ₽</span><input class="input num" id="env-amount" inputmode="decimal" value="${e.planned??""}" placeholder="0"></label>
       <div class="two" id="w-visits"><label class="field"><span>Сколько раз</span><input class="input num" id="env-count" inputmode="numeric" value="${e.count??4}"></label><label class="field"><span>Цена за раз, ₽</span><input class="input num" id="env-price" inputmode="decimal" value="${e.price??""}"></label></div>
-      <label class="field"><span>С какой зарплаты</span><select class="input" id="env-src">${SRC.map(([v,l])=>`<option value="${v}" ${(e.src||"auto")===v?"selected":""}>${l}</option>`).join("")}</select></label>
       <label class="field" id="w-lock"><span>Не трогать до какого числа</span><input class="input num" id="env-lock" inputmode="numeric" value="${e.lockDay??25}"></label>
       <p class="form-err" id="env-err" hidden></p>
       <button class="btn primary" type="submit">${id?"Сохранить":"Добавить"}</button>
@@ -946,11 +859,8 @@ function sheetEnvEdit(id){
       b.querySelector("#w-amount").hidden = kind==="visits";
       b.querySelector("#w-visits").hidden = kind!=="visits";
       b.querySelector("#w-lock").hidden = kind!=="reserve";
-      b.querySelector("#w-mode").hidden = !canShare(kind);
-      const share = canShare(kind) && b.querySelector("#env-mode").value==="share";
-      b.querySelector("#amt-lbl").textContent = share ? "Доля от остатка после обязательных трат, %" : "Сумма на месяц, ₽";
     };
-    b.querySelector("#env-kinds").addEventListener("change", sync); b.querySelector("#env-mode").addEventListener("change", sync); sync();
+    b.querySelector("#env-kinds").addEventListener("change", sync); sync();
     const del = b.querySelector("#env-del");
     if(del) del.addEventListener("click", () => {
       if(!del.classList.contains("confirm")){ del.classList.add("confirm"); del.textContent = "Точно удалить? Траты тоже удалятся"; return; }
@@ -963,7 +873,7 @@ function sheetEnvEdit(id){
       const name = b.querySelector("#env-name").value.trim();
       const kind = b.querySelector('input[name="kind"]:checked').value;
       if(!name) return fail("Введите название");
-      const upd = {name, kind, src: b.querySelector("#env-src").value};
+      const upd = {name, kind};
       if(kind==="visits"){
         const cnt = parseInt(b.querySelector("#env-count").value,10), pr = parseMoney(b.querySelector("#env-price").value);
         if(!(cnt>0 && cnt<=31)) return fail("Количество посещений: от 1 до 31");
@@ -972,8 +882,7 @@ function sheetEnvEdit(id){
       } else {
         const a = parseMoney(b.querySelector("#env-amount").value);
         if(!(a>=0)) return fail("Укажите сумму");
-        if(canShare(kind) && b.querySelector("#env-mode").value==="share"){ upd.auto = true; upd.share = a; }
-        else { upd.auto = false; upd.planned = a; }
+        upd.planned = a;
       }
       if(kind==="reserve"){ const d = parseInt(b.querySelector("#env-lock").value,10); if(!(d>=1&&d<=31)) return fail("Число месяца: от 1 до 31"); upd.lockDay = d; }
       mutate(mm => {
@@ -1004,135 +913,44 @@ function sheetBuy(id){
   });
 }
 
-function payDraft(d, wasPay){ return (wasPay || (d.pay && (d.pay.p10>0 || d.pay.p25>0))) ? d : Object.assign({}, d, {pay:null}); }
-
-function sheetPaycheck(X){
-  const m = S.months[S.view], title = X==="a" ? "10-го" : "25-го", c = ctx(m.key);
-  const range = X==="a" ? `с 10 по 24 ${MONTHS_G[c.m-1]}` : `с 25 ${MONTHS_G[c.m-1]} по 9 ${MONTHS_G[c.m % 12]}`;
-  const cur = hasPay(m) ? (X==="a" ? m.pay.p10 : m.pay.p25) : 0;
-  openSheet(`<h2>Зарплата ${title}</h2>
-    <p class="lead">Введите, сколько пришло. Сайт распределит деньги по статьям на период ${range}.</p>
-    <form class="form" id="f-pc" novalidate>
-      <label class="money"><input id="pc-amount" inputmode="decimal" value="${cur||""}" placeholder="0" aria-label="Сумма зарплаты" autofocus><span>₽</span></label>
-      <p class="pc-head">Как распределится</p>
-      <div id="pc-preview" aria-live="polite"></div>
-      <button class="btn primary" type="submit">Распределить</button>
-      <button type="button" class="btn ghost" data-act="plan">Настроить статьи и доли</button>
-    </form>`, b => {
-    const inp = b.querySelector("#pc-amount"); setTimeout(() => inp.select(), 80);
-    const draft = () => {
-      const d = clone(m); if(!hasPay(d)){ d.pay = {p10:0, p25:0}; migrateShares(d); }
-      const v = parseMoney(inp.value); d.pay[X==="a"?"p10":"p25"] = v>0 ? v : 0; d.income = d.pay.p10 + d.pay.p25;
-      return d;
-    };
-    const preview = () => {
-      const d = draft(), al = allocate(d), r = al.per[X];
-      if(!r.entered){ b.querySelector("#pc-preview").innerHTML = `<p class="note" style="margin:0">Обязательные траты этого периода: ${fmt(r.fixed)}.</p>`; return; }
-      const items = d.envelopes.map(e => ({e, v: al.parts[e.id][X]})).filter(x => x.v > 0.5);
-      let h = '<div class="pc-list">';
-      GROUPS.forEach(g => items.filter(x => g.kinds.includes(x.e.kind)).forEach(x => {
-        const extra = x.e.id===al.saveId && r.toSave>0 ? `<small>включая остаток ${fmt(r.toSave)}</small>` : (isAuto(x.e) ? `<small>доля ${x.e.share}%</small>` : "");
-        h += `<div class="pc-row ${x.e.id===al.saveId && r.toSave>0 ? "save" : ""}"><span>${esc(x.e.name)}${extra}</span><b class="num">${fmt(x.v)}</b></div>`;
-      }));
-      if(r.deficit > 0) h += `<div class="pc-row bad"><span>Не хватает на обязательное</span><b class="num">−${fmt(r.deficit)}</b></div>`;
-      if(r.free > 0) h += `<div class="pc-row"><span>Не распределено</span><b class="num">${fmt(r.free)}</b></div>`;
-      h += '</div>';
-      b.querySelector("#pc-preview").innerHTML = h;
-    };
-    inp.addEventListener("input", preview); preview();
-    b.querySelector("#f-pc").addEventListener("submit", ev => {
-      ev.preventDefault();
-      const d = draft();
-      mutate(mm => { mm.pay = d.pay; mm.income = d.income; mm.envelopes.forEach(e => { const x = d.envelopes.find(y => y.id===e.id); if(x){ e.auto = x.auto; e.share = x.share; } }); });
-      closeSheet(); toast(`Зарплата ${title} распределена`);
-    });
-  });
-}
-
-function sheetPlan(){
+function sheetBudget(){
   const m = S.months[S.view];
-  const d = clone(m); const wasPay = hasPay(m); d.pay = d.pay || {p10:null, p25:null};
-  if(!wasPay) migrateShares(d);
-  const list = d.envelopes.filter(e => !(e.kind==="buy" && e.moved));
-  const rowH = e => {
-    const id = esc(e.id);
-    let val;
-    if(e.kind==="visits") val = `<span class="plan-fixed num">${e.count||0} × ${fmt(e.price)}</span>`;
-    else val = `<div class="plan-val">${canShare(e.kind) ? `<div class="mini-seg" role="group" aria-label="Сумма или доля"><button type="button" data-pm="fix" data-id="${id}" aria-pressed="${!e.auto}">₽</button><button type="button" data-pm="share" data-id="${id}" aria-pressed="${!!e.auto}">%</button></div>` : ""}
-      <input class="input num pv" data-id="${id}" inputmode="decimal" value="${e.auto ? (e.share??"") : (e.planned??"")}" aria-label="${esc(e.name)}"></div>`;
-    return `<div class="plan-row"><div class="plan-top"><span class="plan-name">${esc(e.name)}<span class="plan-kind">${KINDS[e.kind].label}</span></span><span class="plan-calc num" data-calc="${id}"></span></div>
-      <div class="plan-ctrl">${val}<select class="input sel" data-src="${id}" aria-label="С какой зарплаты">${SRC.map(([v,l])=>`<option value="${v}" ${(e.src||"auto")===v?"selected":""}>${l}</option>`).join("")}</select></div></div>`;
-  };
-  openSheet(`<h2>План на ${esc(monthName(S.view))}</h2>
-    <p class="lead">Укажите зарплаты. У обязательных статей точная сумма, у гибких можно поставить долю в процентах: сайт разделит остаток после обязательных трат сам.</p>
-    <form class="form" id="f-plan" novalidate>
-      <div class="two">
-        <label class="field"><span>Зарплата 10-го, ₽</span><input class="input num" id="pl-p10" inputmode="decimal" value="${d.pay.p10||""}" placeholder="0"></label>
-        <label class="field"><span>Зарплата 25-го, ₽</span><input class="input num" id="pl-p25" inputmode="decimal" value="${d.pay.p25||""}" placeholder="0"></label>
-      </div>
-      <div class="plan-list">${list.map(rowH).join("")}</div>
-      <div class="plan-foot"><div class="plan-sum" id="pl-sum" aria-live="polite"></div>
-      <p class="form-err" id="pl-err" hidden></p>
-      <button class="btn primary" type="submit">Сохранить план</button></div>
+  openSheet(`<h2>Деньги на ${esc(monthName(S.view))}</h2>
+    <p class="lead">Впишите, сколько денег на месяц. Пришли ещё деньги, например вторая часть зарплаты? Добавьте их во второе поле, сумма прибавится.</p>
+    <form class="form" id="f-bud" novalidate>
+      <label class="money"><input id="bud-total" inputmode="decimal" value="${m.income||""}" placeholder="0" aria-label="Всего на месяц" autofocus><span>₽</span></label>
+      <label class="field"><span>Добавить к бюджету, ₽</span><input class="input num" id="bud-add" inputmode="decimal" placeholder="Например, 15 000"></label>
+      <p class="pc-head">Как распределится</p>
+      <div id="bud-prev" aria-live="polite"></div>
+      <p class="ps-note soft">Сначала обязательные платежи и занятия, потом лимиты и резерв, потом покупки, затем накопления и буфер. Если денег меньше плана, первыми уменьшаются последние. Всё, что сверху, идёт в копилку.</p>
+      <button class="btn primary" type="submit">Распределить</button>
     </form>`, b => {
-    const f = b.querySelector("#f-plan");
-    const byId = id => d.envelopes.find(e => e.id===id);
-    const read = () => {
-      const p10 = parseMoney(b.querySelector("#pl-p10").value), p25 = parseMoney(b.querySelector("#pl-p25").value);
-      d.pay.p10 = p10>0 ? p10 : 0; d.pay.p25 = p25>0 ? p25 : 0;
-      b.querySelectorAll(".pv").forEach(inp => { const e = byId(inp.dataset.id), v = parseMoney(inp.value); const n = v>=0 ? v : 0; if(e.auto) e.share = n; else e.planned = n; });
-      b.querySelectorAll("[data-src]").forEach(sel => { byId(sel.dataset.src).src = sel.value; });
+    const tot = b.querySelector("#bud-total"), add = b.querySelector("#bud-add");
+    setTimeout(() => tot.select(), 80);
+    const total = () => Math.max(0, (parseMoney(tot.value)||0)) + Math.max(0, (parseMoney(add.value)||0));
+    const preview = () => {
+      const d = clone(m); d.income = total(); const al = allocate(d);
+      let h = '<div class="pc-list">';
+      GROUPS.forEach(g => d.envelopes.filter(e => g.kinds.includes(e.kind) && al.target[e.id] > 0).forEach(e => {
+        const v = al.plan[e.id], t = al.target[e.id], x = al.extra[e.id]||0;
+        let note = "", cls = "";
+        if(al.short[e.id]){ note = "не хватает, можно перенести"; cls = "bad"; }
+        else if(x > 0){ note = `${fmt(t)} + ${fmt(x)} сверху`; cls = "save"; }
+        else if(v < t){ note = `урезано, план ${fmt(t)}`; cls = "bad"; }
+        h += `<div class="pc-row ${cls}"><span>${esc(e.name)}${note?`<small>${note}</small>`:""}</span><b class="num">${fmt(v)}</b></div>`;
+      }));
+      h += `</div><div class="plan-sum" style="margin-top:10px"><div class="ps-row"><span>Запланировано по статьям</span><b class="num">${fmt(al.need)}</b></div>
+        <div class="ps-row"><span>Денег на месяц</span><b class="num">${fmt(al.inc)}</b></div>
+        ${al.deficit > 0 ? `<div class="ps-row bad"><span>Не хватает</span><b class="num">${fmt(al.deficit)}</b></div>`
+          : `<div class="ps-row ok"><span>Сверху в копилку</span><b class="num">${fmt(al.surplus)}</b></div>`}</div>`;
+      b.querySelector("#bud-prev").innerHTML = h;
     };
-    const update = () => {
-      read();
-      const tmp = payDraft(d, wasPay);
-      const al = allocate(tmp), asg = al.asg;
-      b.querySelectorAll("[data-calc]").forEach(el => { const e = byId(el.dataset.calc);
-        const parts = [];
-        if(e.auto) parts.push("= " + fmt(al.plan[e.id]||0));
-        if(asg[e.id]) parts.push(asg[e.id]==="p10" ? "с 10-го" : "с 25-го");
-        el.textContent = parts.join(" · "); });
-      const row = (l, v, cls="") => `<div class="ps-row ${cls}"><span>${l}</span><b class="num">${v}</b></div>`;
-      let h = row("Доход за месяц", fmt(al.inc)) + row("Обязательные и точные суммы", fmt(al.fixed));
-      if(al.autoCount) h += row("Делится по долям", fmt(Math.max(0, al.rem)));
-      if(al.per){
-        [["a","10-го"],["b","25-го"]].forEach(([X,l]) => { const r = al.per[X];
-          if(!r.entered) h += row(`Зарплата ${l}`, "не внесена");
-          else h += row(`Зарплата ${l}: ${fmt(r.amount)}`, r.deficit>5 ? "не хватает "+fmt(r.deficit) : r.toSave>5 ? "в копилку +"+fmt(r.toSave) : r.free>5 ? "свободно "+fmt(r.free) : "✓", r.deficit>5 ? "bad" : "ok");
-        });
-        if(al.per.a.deficit>5 || al.per.b.deficit>5) h += `<p class="ps-note">Обязательных трат больше, чем даёт зарплата. Уменьшите суммы или переведите статьи на другую зарплату.</p>`;
-        else if(!al.autoCount) h += `<p class="ps-note soft">Остаток каждой зарплаты уходит в «${esc((d.envelopes.find(e=>e.id===al.saveId)||{}).name||"копилку")}». Включите «%» у лимитов, чтобы делить его между ними.</p>`;
-      } else {
-        h += `<p class="ps-note soft">Введите хотя бы одну зарплату, и сайт начнёт распределять каждую отдельно.</p>`;
-        if(al.rem < 0) h += `<p class="ps-note">Обязательные траты больше бюджета на ${fmt(-al.rem)}.</p>`;
-      }
-      b.querySelector("#pl-sum").innerHTML = h;
-    };
-    f.addEventListener("input", update); f.addEventListener("change", update);
-    f.addEventListener("click", ev => {
-      const t = ev.target.closest("[data-pm]"); if(!t) return;
-      read();
-      const e = byId(t.dataset.id), toShare = t.dataset.pm === "share";
-      if(!!e.auto === toShare) return;
-      const tmp = payDraft(d, wasPay);
-      const cur = allocate(tmp).plan[e.id] || 0;
-      if(toShare){
-        const pool = Math.max(1, allocate(tmp).rem + cur);
-        e.auto = true; e.share = e.share > 0 ? e.share : Math.max(1, Math.round(cur/pool*100));
-      } else { e.auto = false; e.planned = cur; }
-      const inp = b.querySelector(`.pv[data-id="${CSS.escape(e.id)}"]`); inp.value = e.auto ? e.share : e.planned;
-      t.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x===t)));
-      update();
-    });
-    update();
-    f.addEventListener("submit", ev => {
-      ev.preventDefault(); read();
-      mutate(mm => {
-        mm.pay = (wasPay || d.pay.p10>0 || d.pay.p25>0) ? {p10:d.pay.p10||0, p25:d.pay.p25||0} : null;
-        if(mm.pay) mm.income = mm.pay.p10 + mm.pay.p25;
-        mm.envelopes.forEach(e => { const x = byId(e.id); if(!x) return; e.auto = !!x.auto && canShare(e.kind); e.share = x.share; if(e.kind!=="visits") e.planned = x.planned; e.src = x.src; });
-      });
-      closeSheet(); toast("План сохранён");
+    tot.addEventListener("input", preview); add.addEventListener("input", preview); preview();
+    b.querySelector("#f-bud").addEventListener("submit", ev => {
+      ev.preventDefault();
+      const t = total(), added = Math.max(0, parseMoney(add.value)||0);
+      mutate(mm => { mm.income = t; });
+      closeSheet(); toast(added > 0 ? `Добавлено ${fmt(added)}, бюджет ${fmt(t)}` : `Распределено ${fmt(t)}`);
     });
   });
 }
@@ -1145,7 +963,7 @@ function buildNext(m){
     const n = clone(e); n.id = uid(); n.done = false; n.visits = 0; n.bought = false; n.actual = null; n.moved = false;
     envs.push(n);
   });
-  return {key:nk, income: hasPay(m) ? 0 : incomeOf(m), pay: hasPay(m) ? {p10:0, p25:0} : null, envelopes:envs, expenses:[], createdAt:Date.now()};
+  return {key:nk, income:incomeOf(m), envelopes:envs, expenses:[], createdAt:Date.now()};
 }
 function sheetNewMonth(){
   const m = S.months[S.view], nk = nextKey(m.key);
@@ -1155,7 +973,7 @@ function sheetNewMonth(){
   const li = t => `<li>${I.check}<span>${t}</span></li>`;
   openSheet(`<h2>Создать ${esc(monthName(nk))}</h2><p class="lead">Новый месяц соберётся по шаблону текущего.</p>
     <ul class="carry">
-      ${li(hasPay(m) ? `Зарплаты внесёте, когда придут, и сайт распределит каждую` : `Бюджет: <b class="num">${fmt(incomeOf(m))}</b>`)}
+      ${li(`Бюджет: <b class="num">${fmt(incomeOf(m))}</b>, его можно поменять в любой момент`)}
       ${li(`${keep.length} ${plural(keep.length,"статья","статьи","статей")} с теми же суммами, отметки сбросятся`)}
       ${moved.length ? li(`Перенесённые: ${moved.map(e=>esc(e.name)).join(", ")}`) : ""}
       ${dropped.length ? li(`Не повторятся купленные разовые: ${dropped.map(e=>esc(e.name)).join(", ")}`) : ""}
@@ -1203,8 +1021,7 @@ document.addEventListener("click", ev => {
     case "auth-mode": S.authMode = id; render(); break;
     case "account": sheetAccount(); break;
     case "logout": closeSheet(); sb.auth.signOut(); break;
-    case "income": case "plan": closeSheet(); sheetPlan(); break;
-    case "paycheck": sheetPaycheck(id); break;
+    case "income": case "plan": case "budget": closeSheet(); sheetBudget(); break;
     case "toggle": mutate(m => { const e = m.envelopes.find(x=>x.id===id); e.done = !e.done; }); break;
     case "visit": { const i = +t.dataset.i; mutate(m => { const e = m.envelopes.find(x=>x.id===id); e.visits = (e.visits||0) > i ? i : i+1; }); break; }
     case "buy": { const e = S.months[S.view].envelopes.find(x=>x.id===id); if(e.bought) mutate(m => { const x = m.envelopes.find(y=>y.id===id); x.bought=false; x.actual=null; }); else sheetBuy(id); break; }
