@@ -73,11 +73,11 @@ button{cursor:pointer}
 /* hero envelope */
 .hero{position:relative;overflow:hidden;background:var(--hero-bg);color:var(--hero-ink);border-radius:24px;padding:22px 20px 18px}
 .hero::before{content:"";position:absolute;inset:0 0 auto 0;height:40%;background:var(--hero-flap);clip-path:polygon(0 0,100% 0,50% 100%);pointer-events:none}
-.hero::after{content:"";position:absolute;left:50%;top:calc(40% - 9px);width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--honey);opacity:.9;box-shadow:0 0 0 4px var(--hero-bg)}
+.hero::after{display:none;content:"";position:absolute;left:50%;top:calc(40% - 9px);width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--honey);opacity:.9;box-shadow:0 0 0 4px var(--hero-bg)}
 .hero > *{position:relative;z-index:1}
 .hero-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--hero-muted)}
-.income-btn{border:1px solid var(--hero-track);background:transparent;color:var(--hero-ink);border-radius:999px;padding:5px 10px 5px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.income-btn{white-space:nowrap;flex:none;border:1px solid var(--hero-track);background:transparent;color:var(--hero-ink);border-radius:999px;padding:5px 10px 5px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
 .income-btn svg{width:13px;height:13px;opacity:.7}
 .hero-num{font-family:var(--f-display);font-weight:700;font-size:clamp(34px,10vw,46px);letter-spacing:-.03em;line-height:1.05;margin:10px 0 2px}
 .hero-cap{color:var(--hero-muted);font-size:13px;margin:0}
@@ -266,6 +266,39 @@ fieldset{border:0;margin:0;padding:0;min-width:0}
 .btn:disabled{opacity:.6;cursor:default}
 .empty .btn-row{justify-content:center;max-width:360px;margin:0 auto}
 
+/* paychecks + plan */
+.paystrip{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.pay{border:0;text-align:left;background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:12px 14px;display:grid;gap:2px;min-width:0}
+.pay.active{box-shadow:inset 0 0 0 2px var(--accent),var(--shadow)}
+.pay-t{font-size:12px;color:var(--muted);font-weight:700;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 6px}
+.pay-t > span:first-child{white-space:nowrap}
+.pay-a{font-family:var(--f-display);font-weight:700;font-size:18px;letter-spacing:-.02em}
+.pay-s{font-size:12.5px;color:var(--muted)}
+.pay-s.bad{color:var(--danger);font-weight:700} .pay-s.ok{color:var(--accent);font-weight:700}
+.cta{display:flex;gap:12px;align-items:center;background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:14px;margin-top:12px}
+.cta p{margin:0;font-size:13px;color:var(--muted)} .cta b{display:block;color:var(--ink);font-size:14px;margin-bottom:2px}
+.cta .btn{padding:10px 14px;font-size:14px;flex:none}
+.plan-list{border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.plan-row{padding:12px;border-top:1px solid var(--line)} .plan-row:first-child{border-top:0}
+.plan-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.plan-name{font-weight:700;font-size:14px;min-width:0;overflow-wrap:anywhere}
+.plan-kind{font-size:11.5px;color:var(--muted);font-weight:600;margin-left:6px}
+.plan-calc{color:var(--accent);font-size:13px;font-weight:700;white-space:nowrap}
+.plan-ctrl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:8px;align-items:center}
+.plan-val{display:flex;gap:6px;min-width:0;align-items:center}
+.plan-val .input{padding:9px 12px;font-size:15px;min-width:0}
+.plan-fixed{color:var(--muted);font-weight:600;font-size:14px}
+.sel{padding:9px 10px;font-size:14px;width:auto;max-width:132px}
+.mini-seg{display:flex;background:var(--surface-2);border-radius:10px;padding:3px;flex:none}
+.mini-seg button{border:0;background:transparent;border-radius:8px;padding:5px 10px;font-weight:800;font-size:13px;color:var(--muted)}
+.mini-seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.plan-foot{position:sticky;bottom:calc(-22px - env(safe-area-inset-bottom,0px));background:var(--surface);padding:10px 0 4px;display:grid;gap:10px;margin-bottom:-4px}
+.plan-sum{background:var(--surface-2);border-radius:14px;padding:12px 14px;display:grid;gap:5px;font-size:13.5px}
+.ps-row{display:flex;justify-content:space-between;gap:10px} .ps-row span{color:var(--muted)}
+.ps-row.bad b{color:var(--danger)} .ps-row.ok b{color:var(--accent)}
+.ps-note{font-size:12.5px;color:var(--danger);font-weight:600;margin:2px 0 0}
+.ps-note.soft{color:var(--muted);font-weight:500}
+
 /* toast */
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:50;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:13.5px;font-weight:700;box-shadow:var(--shadow);max-width:calc(100% - 32px);animation:up .2s ease}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -361,11 +394,11 @@ const TEMPLATE = {income:38000, envelopes:[
   {name:"Футболка для работы", kind:"buy", planned:0, moved:true},
   {name:"Брови", kind:"buy", planned:2300},
   {name:"Кухонные часы", kind:"buy", planned:800},
-  {name:"Питание для себя", kind:"limit", planned:6000},
-  {name:"Развлечения", kind:"limit", planned:2000},
-  {name:"Золотое яблоко", kind:"limit", planned:1500},
-  {name:"Транспорт / мелочи", kind:"limit", planned:2000},
-  {name:"Буфер на непредвиденное", kind:"buffer", planned:3200}
+  {name:"Питание для себя", kind:"limit", planned:6000, auto:true, share:41},
+  {name:"Развлечения", kind:"limit", planned:2000, auto:true, share:14},
+  {name:"Золотое яблоко", kind:"limit", planned:1500, auto:true, share:10},
+  {name:"Транспорт / мелочи", kind:"limit", planned:2000, auto:true, share:14},
+  {name:"Буфер на непредвиденное", kind:"buffer", planned:3200, auto:true, share:21}
 ]};
 
 const S = { mode:"loading", user:null, authMode:"in", months:{}, view:null, tab:"month", filter:"all", note:"", lastEnv:null };
@@ -401,15 +434,66 @@ function ctx(key){
   let day; if(key === cur) day = new Date().getDate(); else if(key < cur) day = dim + 1; else day = 0;
   return {y, m, dim, day, isCurrent:key===cur, isPast:key<cur, daysLeft: key===cur ? dim-day+1 : (key<cur?0:dim)};
 }
-const planOf = e => e.kind==="visits" ? (e.count||0)*(e.price||0) : (e.kind==="buy" && e.moved ? 0 : (e.planned||0));
+const prevKey = k => { const [y,m]=k.split("-").map(Number); return m===1 ? (y-1)+"-12" : y+"-"+pad(m-1); };
+const hasPay = m => !!(m && m.pay && ((m.pay.p10||0) > 0 || (m.pay.p25||0) > 0));
+const incomeOf = m => hasPay(m) ? (m.pay.p10||0) + (m.pay.p25||0) : (m.income||0);
+const canShare = k => k==="save" || k==="limit" || k==="buffer";
+const isAuto = e => canShare(e.kind) && !!e.auto;
+const baseOf = e => e.kind==="visits" ? (e.count||0)*(e.price||0) : (e.kind==="buy" && e.moved ? 0 : (e.planned||0));
 const unlocked = (e,c) => c.day >= (e.lockDay||1);
-function calc(m){
-  const c = ctx(m.key), by = {};
-  (m.expenses||[]).forEach(x => { by[x.env] = (by[x.env]||0) + (x.amount||0); });
+const SRC = [["auto","Авто"],["p10","С 10-го"],["p25","С 25-го"],["split","Пополам"]];
+function allocate(m){
+  const inc = incomeOf(m); let fixed = 0, sumW = 0; const autos = [], plan = {};
+  m.envelopes.forEach(e => { if(isAuto(e)){ autos.push(e); sumW += Math.max(0, e.share||0); } else { plan[e.id] = baseOf(e); fixed += plan[e.id]; } });
+  const rem = inc - fixed, pool = Math.max(0, rem);
+  autos.forEach(e => { plan[e.id] = 0; });
+  const ws = autos.filter(e => (e.share||0) > 0); let used = 0;
+  ws.forEach((e,i) => { const v = i===ws.length-1 ? pool-used : Math.round(pool*e.share/sumW/50)*50; plan[e.id] = Math.max(0, v); used += plan[e.id]; });
+  return {inc, fixed, rem, sumW, plan, autoCount:autos.length, autoSum: autos.reduce((a,e)=>a+plan[e.id],0)};
+}
+const isLump = e => (e.src||"auto")==="auto" && (e.kind==="pay" || e.kind==="buy" || e.kind==="reserve");
+/* lump items (payments, purchases, reserve) on "auto" go to whichever paycheck has more room left */
+function assign(m, plan){
+  const p = m.pay||{}; let ca = p.p10||0, cb = p.p25||0; const res = {};
+  m.envelopes.forEach(e => { if(isLump(e)) return; const pr = splitOf(e, plan[e.id]||0, m); ca -= pr.a; cb -= pr.b; });
+  m.envelopes.filter(isLump).sort((x,y) => (plan[y.id]||0) - (plan[x.id]||0)).forEach(e => {
+    const v = plan[e.id]||0; if(ca >= cb){ res[e.id] = "p10"; ca -= v; } else { res[e.id] = "p25"; cb -= v; }
+  });
+  /* daily limits and buffer absorb what is left, so each paycheck is spent exactly */
+  if((p.p10||0) + (p.p25||0) > 0){
+    const flex = m.envelopes.filter(e => (e.src||"auto")==="auto" && (e.kind==="limit" || e.kind==="buffer"));
+    const tot = flex.reduce((a,e) => a + (plan[e.id]||0), 0);
+    if(tot > 0){
+      const curA = flex.reduce((a,e) => a + splitOf(e, plan[e.id]||0, m).a, 0);
+      res._fa = Math.min(1, Math.max(0, (curA + ca) / tot));
+    }
+  }
+  return res;
+}
+function splitOf(e, amount, m, asg){
+  let src = e.src || "auto";
+  if(src === "auto") src = ["limit","buffer","visits"].includes(e.kind) ? "days" : e.kind==="save" ? "income" : ((asg && asg[e.id]) || "p10");
+  let fa;
+  if(src==="p10") fa = 1; else if(src==="p25") fa = 0; else if(src==="split") fa = .5;
+  else if(src==="days"){ const dim = ctx(m.key).dim; fa = (asg && asg._fa!=null && e.kind!=="visits") ? asg._fa : 15/(15 + dim - 24 + 9); }
+  else { const p = m.pay||{}, t = (p.p10||0)+(p.p25||0); fa = t>0 ? (p.p10||0)/t : .5; }
+  const a = Math.round(amount*fa); return {a, b: amount - a};
+}
+const periodOfDay = d => (d>=10 && d<=24) ? "a" : "b";
+function calc(m, force){
+  const c = ctx(m.key), al = allocate(m), asg = assign(m, al.plan), by = {}, byA = {};
+  (m.expenses||[]).forEach(x => {
+    by[x.env] = (by[x.env]||0) + (x.amount||0);
+    if(periodOfDay(Number(String(x.date||"").slice(8,10))) === "a") byA[x.env] = (byA[x.env]||0) + (x.amount||0);
+  });
+  const pay = hasPay(m);
+  let period = null, daysLeftP = 0;
+  if(force){ period = force.period; daysLeftP = force.daysLeft; }
+  else if(pay && c.isCurrent && c.day >= 10){ period = c.day <= 24 ? "a" : "b"; daysLeftP = period==="a" ? 24-c.day+1 : c.dim-c.day+1+9; }
   let buySave = 0;
   m.envelopes.forEach(e => { if(e.kind==="buy" && e.bought && !e.moved) buySave += (e.planned||0) - (e.actual ?? e.planned ?? 0); });
   const rows = m.envelopes.map(e => {
-    const plan = planOf(e); let spent = 0, avail = plan, extra = 0;
+    const plan = al.plan[e.id] || 0; let spent = 0, avail = plan, extra = 0;
     switch(e.kind){
       case "save": case "pay": spent = e.done ? plan : 0; break;
       case "visits": spent = (e.visits||0)*(e.price||0); break;
@@ -417,18 +501,23 @@ function calc(m){
       case "buffer": spent = by[e.id]||0; extra = buySave; avail = plan + buySave; break;
       default: spent = by[e.id]||0;
     }
-    return {e, plan, spent, avail, left: avail - spent, extra};
+    const parts = splitOf(e, plan, m, asg);
+    let pLeft = null;
+    if(period==="a") pLeft = parts.a + extra - (byA[e.id]||0);
+    else if(period==="b") pLeft = avail - spent;
+    return {e, plan, spent, avail, left: avail - spent, extra, parts, pLeft};
   });
-  let distributed=0, saved=0, spent=0, canSpend=0, flexAvail=0, flexSpent=0;
+  let distributed=0, saved=0, spent=0, canSpend=0, flexAvail=0, flexSpent=0, A=0, B=0, periodCan=0;
   rows.forEach(r => {
-    distributed += r.plan;
-    if(r.e.kind==="save") saved += r.spent;
-    else if(r.e.kind==="buffer") spent += r.spent - 0; else spent += r.spent;
+    distributed += r.plan; A += r.parts.a; B += r.parts.b;
+    if(r.e.kind==="save") saved += r.spent; else spent += r.spent;
     const flex = r.e.kind==="limit" || r.e.kind==="buffer" || (r.e.kind==="reserve" && unlocked(r.e,c));
-    if(flex){ canSpend += Math.max(0, r.left); }
+    if(flex){ canSpend += Math.max(0, r.left); if(r.pLeft!=null) periodCan += Math.max(0, r.pLeft); }
     if(r.e.kind==="limit" || r.e.kind==="buffer"){ flexAvail += r.avail; flexSpent += r.spent; }
   });
-  return {c, rows, distributed, saved, spent, canSpend, flexAvail, flexSpent, unassigned:(m.income||0)-distributed, buySave};
+  const inc = al.inc;
+  return {c, rows, al, pay, period, daysLeftP, periodCan, A, B, distributed, saved, spent, canSpend, flexAvail, flexSpent,
+    income:inc, unassigned: inc - distributed, deficit: Math.max(0, al.fixed - inc), buySave};
 }
 
 /* ---------- rendering ---------- */
@@ -527,34 +616,63 @@ function emptyState(){
   </section>`;
 }
 
+let PCTX = null;
 function monthView(m,k){
   const c = k.c;
+  const nextG = MONTHS_G[c.m % 12];
+  let hk = k, heroEyebrow = "Можно тратить", heroNum = k.canSpend, heroCap = "остаток во всех лимитах и буфере", perDay = c.isCurrent && c.daysLeft>0 ? k.canSpend/c.daysLeft : 0;
+  PCTX = null;
+  if(k.period){
+    const end = k.period==="a" ? `24 ${MONTHS_G[c.m-1]}` : `9 ${nextG}`;
+    heroEyebrow = `Можно тратить до ${end}`; heroNum = k.periodCan; perDay = k.daysLeftP>0 ? k.periodCan/k.daysLeftP : 0;
+    heroCap = `зарплата ${k.period==="a"?"25-го":"10-го"} через ${k.daysLeftP} ${plural(k.daysLeftP,"день","дня","дней")}`;
+    PCTX = {end, days:k.daysLeftP};
+  } else if(k.pay && c.isCurrent && c.day < 10){
+    const pm = S.months[prevKey(m.key)];
+    if(hasPay(pm)){
+      const dl = 10 - c.day, pk = calc(pm, {period:"b", daysLeft:dl});
+      heroEyebrow = "До зарплаты 10-го"; heroNum = pk.periodCan; perDay = pk.periodCan/dl;
+      heroCap = `остаток с зарплаты 25 ${MONTHS_G[pk.c.m-1]} · ${dl} ${plural(dl,"день","дня","дней")}`;
+    }
+  }
   const monthPct = c.isPast ? 100 : c.isCurrent ? Math.min(100,(c.day-0.5)/c.dim*100) : 0;
   const spentPct = k.flexAvail>0 ? Math.min(100, k.flexSpent/k.flexAvail*100) : 0;
   const ahead = spentPct > monthPct + 3;
   const dayText = c.isCurrent ? `${c.day}-й день из ${c.dim}` : c.isPast ? "Месяц завершён" : "Месяц ещё не начался";
+  const third = k.deficit>0 ? ["Не хватает", k.deficit] : k.unassigned<0 ? ["Сверх бюджета", -k.unassigned] : ["Не распределено", k.unassigned];
   let h = `<section class="hero" aria-label="Сводка месяца">
-    <div class="hero-top"><span class="eyebrow">Можно тратить</span>
-      <button class="income-btn num" data-act="income">Бюджет ${fmt(m.income)} ${I.edit}</button></div>
-    <div class="hero-num num">${fmt(k.canSpend)}</div>
-    <p class="hero-cap">остаток во всех лимитах и буфере${c.isCurrent && c.daysLeft>0 ? ` · ≈ ${fmt(k.canSpend/c.daysLeft)} в день` : ""}</p>
+    <div class="hero-top"><span class="eyebrow">${esc(heroEyebrow)}</span>
+      <button class="income-btn num" data-act="plan">План · ${fmt(k.income)} ${I.edit}</button></div>
+    <div class="hero-num num">${fmt(heroNum)}</div>
+    <p class="hero-cap">${esc(heroCap)}${perDay>0 ? ` · ≈ ${fmt(perDay)} в день` : ""}</p>
     <div class="pace">
       <div class="pace-bar" role="img" aria-label="Лимиты потрачены на ${Math.round(spentPct)}%, прошло ${Math.round(monthPct)}% месяца">
         <div class="pace-fill ${ahead?"ahead":""}" style="width:${spentPct}%"></div>
         ${c.isCurrent ? `<div class="pace-mark" style="left:${monthPct}%"></div>` : ""}
       </div>
-      <div class="pace-legend"><span>Лимиты потрачены на ${Math.round(spentPct)}%</span><span>${dayText}</span></div>
+      <div class="pace-legend"><span>Лимиты месяца потрачены на ${Math.round(spentPct)}%</span><span>${dayText}</span></div>
     </div>
     <dl class="hero-stats num">
       <div><dt>Потрачено</dt><dd>${fmt(k.spent)}</dd></div>
       <div><dt>Отложено</dt><dd>${fmt(k.saved)}</dd></div>
-      <div><dt>${k.unassigned<0?"Сверх бюджета":"Не распределено"}</dt><dd>${fmt(Math.abs(k.unassigned))}</dd></div>
+      <div><dt>${third[0]}</dt><dd>${fmt(third[1])}</dd></div>
     </dl>
   </section>`;
+  if(k.pay){
+    const card = (id, title, amount, alloc) => {
+      const diff = amount - alloc;
+      const st = diff < -5 ? `<span class="pay-s bad">не хватает ${fmt(-diff)}</span>` : diff > 5 ? `<span class="pay-s">свободно ${fmt(diff)}</span>` : `<span class="pay-s ok">расписано полностью</span>`;
+      return `<button class="pay ${k.period===id?"active":""}" data-act="plan"><span class="pay-t"><span>${title}</span>${k.period===id?'<span class="chip accent">сейчас</span>':""}</span>
+        <span class="pay-a num">${fmt(amount)}</span><span class="pay-s num">расписано ${fmt(Math.abs(diff)<=5 ? amount : alloc)}</span>${st}</button>`;
+    };
+    h += `<div class="paystrip">${card("a","Зарплата 10-го", m.pay.p10||0, k.A)}${card("b","Зарплата 25-го", m.pay.p25||0, k.B)}</div>`;
+  } else {
+    h += `<div class="cta"><div class="ic accent">${I.wallet}</div><p><b>Укажите зарплаты 10-го и 25-го</b>Сайт сам распределит деньги по статьям и посчитает бюджет до каждой зарплаты.</p><button class="btn primary" data-act="plan">Настроить</button></div>`;
+  }
   GROUPS.forEach(g => {
     const rows = k.rows.filter(r => g.kinds.includes(r.e.kind));
     if(!rows.length) return;
-    const sum = rows.reduce((a,r) => a + r.plan + (r.e.kind==="buffer"?0:0), 0);
+    const sum = rows.reduce((a,r) => a + r.plan, 0);
     h += `<section class="group"><div class="group-head"><div><h2>${g.title}</h2><p>${g.sub}</p></div><span class="group-sum num">${fmt(sum)}</span></div>
       <div class="panel">${rows.map(r => rowHTML(r,c)).join("")}</div></section>`;
   });
@@ -619,8 +737,15 @@ function rowHTML(r,c){
 }
 function limitRow(r,c,icon,tone,menu){
   const e = r.e;
-  let sub = r.left>=0 ? `Осталось <b class="num">${fmt(r.left)}</b> из ${fmt(r.avail)}` : `<span class="chip danger">Перерасход ${fmt(-r.left)}</span>`;
-  if(e.kind==="limit" && c.isCurrent && c.daysLeft>0 && r.left>0) sub += ` · ≈ ${fmt(r.left/c.daysLeft)} в день`;
+  let sub;
+  if(r.pLeft!=null && PCTX){
+    sub = r.pLeft>=0 ? `До ${PCTX.end}: <b class="num">${fmt(r.pLeft)}</b>` : `<span class="chip danger">Перерасход ${fmt(-r.pLeft)}</span>`;
+    if(e.kind==="limit" && r.pLeft>0 && PCTX.days>0) sub += ` · ≈ ${fmt(r.pLeft/PCTX.days)} в день`;
+    sub += `<br>За месяц осталось ${fmt(r.left)} из ${fmt(r.avail)}`;
+  } else {
+    sub = r.left>=0 ? `Осталось <b class="num">${fmt(r.left)}</b> из ${fmt(r.avail)}` : `<span class="chip danger">Перерасход ${fmt(-r.left)}</span>`;
+    if(e.kind==="limit" && c.isCurrent && c.daysLeft>0 && r.left>0) sub += ` · ≈ ${fmt(r.left/c.daysLeft)} в день`;
+  }
   if(e.kind==="buffer" && r.extra>0) sub += ` · <span class="chip accent">+${fmt(r.extra)} с покупок</span>`;
   return `<div class="row">
     <div class="ic ${tone}">${icon}</div>
@@ -628,7 +753,6 @@ function limitRow(r,c,icon,tone,menu){
     <div class="row-amt num">${fmt(r.spent)}<small>потрачено</small></div>${menu}
     ${barHTML(r)}</div>`;
 }
-
 function expRow(x, envName, showEnv){
   return `<div class="exp">
     <div class="exp-main">${showEnv?`<div class="exp-env">${esc(envName)}</div>`:""}<div class="exp-note">${esc(x.note || (showEnv ? "Без комментария" : envName))}</div></div>
@@ -667,7 +791,7 @@ function statsView(m,k,keys){
   });
   h += `</div><div class="legend"><span><i style="background:var(--accent)"></i>Траты</span><span><i style="background:var(--honey)"></i>Накопления</span><span><i style="background:var(--danger)"></i>Перерасход</span></div></div>`;
 
-  const ms = keys.slice(-6).map(key => { const mm = S.months[key], kk = calc(mm); return {key, income:mm.income||0, spent:kk.spent, saved:kk.saved}; });
+  const ms = keys.slice(-6).map(key => { const mm = S.months[key], kk = calc(mm); return {key, income:incomeOf(mm), spent:kk.spent, saved:kk.saved}; });
   const max = Math.max(1, ...ms.map(x => Math.max(x.income, x.spent + x.saved)));
   h += `<div class="stat-card"><h3>По месяцам</h3><p>${ms.length<2 ? "Сравнение появится, когда будет хотя бы два месяца" : "Потрачено и отложено относительно бюджета"}</p><div class="months-chart">`;
   ms.forEach(x => {
@@ -722,9 +846,17 @@ function sheetExpense(pre){
       const note = b.querySelector("#exp-note").value.trim();
       const date = b.querySelector("#exp-date").value || defDate;
       S.lastEnv = env; lsSet("konverty.lastEnv", env);
-      mutate(mm => mm.expenses.push({id:uid(), env, amount:Math.round(amt*100)/100, note, date, ts:Date.now()}));
+      const envObj = m.envelopes.find(e=>e.id===env) || {};
+      let target = S.view, envId = env;
+      const pk = prevKey(S.view), pm = S.months[pk];
+      if(hasPay(m) && date.slice(0,7)===S.view && Number(date.slice(8,10)) < 10 && hasPay(pm)){
+        const twin = pm.envelopes.find(e => e.name===envObj.name && e.kind===envObj.kind);
+        if(twin){ target = pk; envId = twin.id; }
+      }
+      S.months[target].expenses.push({id:uid(), env:envId, amount:Math.round(amt*100)/100, note, date, ts:Date.now()});
+      persist(target); render();
       closeSheet();
-      toast(`Записано: ${fmt(amt)} · ${(m.envelopes.find(e=>e.id===env)||{}).name}`);
+      toast(target===S.view ? `Записано: ${fmt(amt)} · ${envObj.name}` : `Записано в период с 25 ${MONTHS_G[Number(pk.slice(5))-1]}: ${fmt(amt)} · ${envObj.name}`);
     });
   });
 }
@@ -752,8 +884,10 @@ function sheetEnvEdit(id){
       <fieldset><legend class="legend-t">Тип</legend><div class="pick" id="env-kinds">
         ${Object.entries(KINDS).map(([kk,v])=>`<label><input type="radio" name="kind" value="${kk}" ${e.kind===kk?"checked":""}><span class="opt">${v.label}</span></label>`).join("")}
       </div><p class="kind-hint" id="kind-hint"></p></fieldset>
-      <label class="field" id="w-amount"><span>Сумма на месяц, ₽</span><input class="input num" id="env-amount" inputmode="decimal" value="${e.planned??""}" placeholder="0"></label>
+      <label class="field" id="w-mode"><span>Как считать сумму</span><select class="input" id="env-mode"><option value="fix" ${e.auto?"":"selected"}>Точная сумма</option><option value="share" ${e.auto?"selected":""}>Доля от остатка, %</option></select></label>
+      <label class="field" id="w-amount"><span id="amt-lbl">Сумма на месяц, ₽</span><input class="input num" id="env-amount" inputmode="decimal" value="${e.auto ? (e.share??"") : (e.planned??"")}" placeholder="0"></label>
       <div class="two" id="w-visits"><label class="field"><span>Сколько раз</span><input class="input num" id="env-count" inputmode="numeric" value="${e.count??4}"></label><label class="field"><span>Цена за раз, ₽</span><input class="input num" id="env-price" inputmode="decimal" value="${e.price??""}"></label></div>
+      <label class="field"><span>С какой зарплаты</span><select class="input" id="env-src">${SRC.map(([v,l])=>`<option value="${v}" ${(e.src||"auto")===v?"selected":""}>${l}</option>`).join("")}</select></label>
       <label class="field" id="w-lock"><span>Не трогать до какого числа</span><input class="input num" id="env-lock" inputmode="numeric" value="${e.lockDay??25}"></label>
       <p class="form-err" id="env-err" hidden></p>
       <button class="btn primary" type="submit">${id?"Сохранить":"Добавить"}</button>
@@ -766,8 +900,11 @@ function sheetEnvEdit(id){
       b.querySelector("#w-amount").hidden = kind==="visits";
       b.querySelector("#w-visits").hidden = kind!=="visits";
       b.querySelector("#w-lock").hidden = kind!=="reserve";
+      b.querySelector("#w-mode").hidden = !canShare(kind);
+      const share = canShare(kind) && b.querySelector("#env-mode").value==="share";
+      b.querySelector("#amt-lbl").textContent = share ? "Доля от остатка после обязательных трат, %" : "Сумма на месяц, ₽";
     };
-    b.querySelector("#env-kinds").addEventListener("change", sync); sync();
+    b.querySelector("#env-kinds").addEventListener("change", sync); b.querySelector("#env-mode").addEventListener("change", sync); sync();
     const del = b.querySelector("#env-del");
     if(del) del.addEventListener("click", () => {
       if(!del.classList.contains("confirm")){ del.classList.add("confirm"); del.textContent = "Точно удалить? Траты тоже удалятся"; return; }
@@ -780,7 +917,7 @@ function sheetEnvEdit(id){
       const name = b.querySelector("#env-name").value.trim();
       const kind = b.querySelector('input[name="kind"]:checked').value;
       if(!name) return fail("Введите название");
-      const upd = {name, kind};
+      const upd = {name, kind, src: b.querySelector("#env-src").value};
       if(kind==="visits"){
         const cnt = parseInt(b.querySelector("#env-count").value,10), pr = parseMoney(b.querySelector("#env-price").value);
         if(!(cnt>0 && cnt<=31)) return fail("Количество посещений: от 1 до 31");
@@ -789,7 +926,8 @@ function sheetEnvEdit(id){
       } else {
         const a = parseMoney(b.querySelector("#env-amount").value);
         if(!(a>=0)) return fail("Укажите сумму");
-        upd.planned = a;
+        if(canShare(kind) && b.querySelector("#env-mode").value==="share"){ upd.auto = true; upd.share = a; }
+        else { upd.auto = false; upd.planned = a; }
       }
       if(kind==="reserve"){ const d = parseInt(b.querySelector("#env-lock").value,10); if(!(d>=1&&d<=31)) return fail("Число месяца: от 1 до 31"); upd.lockDay = d; }
       mutate(mm => {
@@ -820,17 +958,89 @@ function sheetBuy(id){
   });
 }
 
-function sheetIncome(){
-  const m = S.months[S.view], k = calc(m);
-  openSheet(`<h2>Бюджет на ${esc(monthName(S.view))}</h2><p class="lead num">Сейчас по статьям распределено ${fmt(k.distributed)}</p>
-    <form class="form" id="f-inc" novalidate>
-      <label class="money"><input id="inc-amount" inputmode="decimal" value="${m.income||""}" aria-label="Бюджет" autofocus><span>₽</span></label>
-      <p class="form-err" id="inc-err" hidden></p>
-      <button class="btn primary" type="submit">Сохранить</button></form>`, b => {
-    b.querySelector("#f-inc").addEventListener("submit", ev => {
-      ev.preventDefault(); const a = parseMoney(b.querySelector("#inc-amount").value);
-      if(!(a>=0)){ const er=b.querySelector("#inc-err"); er.textContent="Введите сумму"; er.hidden=false; return; }
-      mutate(mm => { mm.income = a; }); closeSheet(); toast("Бюджет обновлён");
+function sheetPlan(){
+  const m = S.months[S.view];
+  const d = clone(m); d.pay = d.pay || {p10:null, p25:null};
+  const list = d.envelopes.filter(e => !(e.kind==="buy" && e.moved));
+  const rowH = e => {
+    const id = esc(e.id);
+    let val;
+    if(e.kind==="visits") val = `<span class="plan-fixed num">${e.count||0} × ${fmt(e.price)}</span>`;
+    else val = `<div class="plan-val">${canShare(e.kind) ? `<div class="mini-seg" role="group" aria-label="Сумма или доля"><button type="button" data-pm="fix" data-id="${id}" aria-pressed="${!e.auto}">₽</button><button type="button" data-pm="share" data-id="${id}" aria-pressed="${!!e.auto}">%</button></div>` : ""}
+      <input class="input num pv" data-id="${id}" inputmode="decimal" value="${e.auto ? (e.share??"") : (e.planned??"")}" aria-label="${esc(e.name)}"></div>`;
+    return `<div class="plan-row"><div class="plan-top"><span class="plan-name">${esc(e.name)}<span class="plan-kind">${KINDS[e.kind].label}</span></span><span class="plan-calc num" data-calc="${id}"></span></div>
+      <div class="plan-ctrl">${val}<select class="input sel" data-src="${id}" aria-label="С какой зарплаты">${SRC.map(([v,l])=>`<option value="${v}" ${(e.src||"auto")===v?"selected":""}>${l}</option>`).join("")}</select></div></div>`;
+  };
+  openSheet(`<h2>План на ${esc(monthName(S.view))}</h2>
+    <p class="lead">Укажите зарплаты. У обязательных статей точная сумма, у гибких можно поставить долю в процентах: сайт разделит остаток после обязательных трат сам.</p>
+    <form class="form" id="f-plan" novalidate>
+      <div class="two">
+        <label class="field"><span>Зарплата 10-го, ₽</span><input class="input num" id="pl-p10" inputmode="decimal" value="${d.pay.p10||""}" placeholder="0"></label>
+        <label class="field"><span>Зарплата 25-го, ₽</span><input class="input num" id="pl-p25" inputmode="decimal" value="${d.pay.p25||""}" placeholder="0"></label>
+      </div>
+      <div class="plan-list">${list.map(rowH).join("")}</div>
+      <div class="plan-foot"><div class="plan-sum" id="pl-sum" aria-live="polite"></div>
+      <p class="form-err" id="pl-err" hidden></p>
+      <button class="btn primary" type="submit">Сохранить план</button></div>
+    </form>`, b => {
+    const f = b.querySelector("#f-plan");
+    const byId = id => d.envelopes.find(e => e.id===id);
+    const read = () => {
+      const p10 = parseMoney(b.querySelector("#pl-p10").value), p25 = parseMoney(b.querySelector("#pl-p25").value);
+      d.pay.p10 = p10>0 ? p10 : 0; d.pay.p25 = p25>0 ? p25 : 0;
+      b.querySelectorAll(".pv").forEach(inp => { const e = byId(inp.dataset.id), v = parseMoney(inp.value); const n = v>=0 ? v : 0; if(e.auto) e.share = n; else e.planned = n; });
+      b.querySelectorAll("[data-src]").forEach(sel => { byId(sel.dataset.src).src = sel.value; });
+    };
+    const update = () => {
+      read();
+      const tmp = hasPay(d) ? d : Object.assign({}, d, {pay:null});
+      const al = allocate(tmp);
+      let A = 0, Bv = 0; const asg = hasPay(tmp) ? assign(tmp, al.plan) : {};
+      tmp.envelopes.forEach(e => { const pr = splitOf(e, al.plan[e.id]||0, tmp, asg); A += pr.a; Bv += pr.b; });
+      b.querySelectorAll("[data-calc]").forEach(el => { const e = byId(el.dataset.calc);
+        const parts = [];
+        if(e.auto) parts.push("= " + fmt(al.plan[e.id]||0));
+        if(asg[e.id]) parts.push(asg[e.id]==="p10" ? "с 10-го" : "с 25-го");
+        el.textContent = parts.join(" · "); });
+      const row = (l, v, cls="") => `<div class="ps-row ${cls}"><span>${l}</span><b class="num">${v}</b></div>`;
+      let h = row("Доход за месяц", fmt(al.inc)) + row("Обязательные и точные суммы", fmt(al.fixed));
+      if(al.autoCount) h += row("Делится по долям", fmt(Math.max(0, al.rem)));
+      if(hasPay(d)){
+        const dA = (d.pay.p10||0) - A, dB = (d.pay.p25||0) - Bv;
+        h += row(`С зарплаты 10-го: ${fmt(A)} из ${fmt(d.pay.p10||0)}`, dA < -5 ? "−"+fmt(-dA) : dA > 5 ? "+"+fmt(dA) : "✓", dA < -5 ? "bad" : "ok");
+        h += row(`С зарплаты 25-го: ${fmt(Bv)} из ${fmt(d.pay.p25||0)}`, dB < -5 ? "−"+fmt(-dB) : dB > 5 ? "+"+fmt(dB) : "✓", dB < -5 ? "bad" : "ok");
+        if((dA < -5) !== (dB < -5) && (dA < -5 || dB < -5)) h += `<p class="ps-note soft">Из одной зарплаты расписано больше, чем она даёт. Переведите часть статей на другую зарплату в списке выше.</p>`;
+      } else h += `<p class="ps-note soft">Без сумм зарплат план считается от бюджета ${fmt(al.inc)}.</p>`;
+      if(al.rem < 0) h += `<p class="ps-note">Обязательные траты больше дохода на ${fmt(-al.rem)}. Уменьшите суммы или перенесите покупки.</p>`;
+      else if(al.autoCount && al.sumW <= 0) h += `<p class="ps-note">Задайте доли гибким статьям, иначе остаток ${fmt(al.rem)} не распределится.</p>`;
+      else if(!al.autoCount && al.rem > 0.5) h += `<p class="ps-note soft">Не распределено ${fmt(al.rem)}. Включите «%» у лимитов или буфера, и остаток разделится сам.</p>`;
+      b.querySelector("#pl-sum").innerHTML = h;
+    };
+    f.addEventListener("input", update); f.addEventListener("change", update);
+    f.addEventListener("click", ev => {
+      const t = ev.target.closest("[data-pm]"); if(!t) return;
+      read();
+      const e = byId(t.dataset.id), toShare = t.dataset.pm === "share";
+      if(!!e.auto === toShare) return;
+      const tmp = hasPay(d) ? d : Object.assign({}, d, {pay:null});
+      const cur = allocate(tmp).plan[e.id] || 0;
+      if(toShare){
+        const pool = Math.max(1, allocate(tmp).rem + cur);
+        e.auto = true; e.share = e.share > 0 ? e.share : Math.max(1, Math.round(cur/pool*100));
+      } else { e.auto = false; e.planned = cur; }
+      const inp = b.querySelector(`.pv[data-id="${CSS.escape(e.id)}"]`); inp.value = e.auto ? e.share : e.planned;
+      t.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x===t)));
+      update();
+    });
+    update();
+    f.addEventListener("submit", ev => {
+      ev.preventDefault(); read();
+      mutate(mm => {
+        mm.pay = hasPay(d) ? {p10:d.pay.p10||0, p25:d.pay.p25||0} : null;
+        if(mm.pay) mm.income = mm.pay.p10 + mm.pay.p25;
+        mm.envelopes.forEach(e => { const x = byId(e.id); if(!x) return; e.auto = !!x.auto && canShare(e.kind); e.share = x.share; if(e.kind!=="visits") e.planned = x.planned; e.src = x.src; });
+      });
+      closeSheet(); toast("План сохранён");
     });
   });
 }
@@ -843,7 +1053,7 @@ function buildNext(m){
     const n = clone(e); n.id = uid(); n.done = false; n.visits = 0; n.bought = false; n.actual = null; n.moved = false;
     envs.push(n);
   });
-  return {key:nk, income:m.income||0, envelopes:envs, expenses:[], createdAt:Date.now()};
+  return {key:nk, income:incomeOf(m), pay: m.pay ? clone(m.pay) : null, envelopes:envs, expenses:[], createdAt:Date.now()};
 }
 function sheetNewMonth(){
   const m = S.months[S.view], nk = nextKey(m.key);
@@ -853,7 +1063,7 @@ function sheetNewMonth(){
   const li = t => `<li>${I.check}<span>${t}</span></li>`;
   openSheet(`<h2>Создать ${esc(monthName(nk))}</h2><p class="lead">Новый месяц соберётся по шаблону текущего.</p>
     <ul class="carry">
-      ${li(`Бюджет: <b class="num">${fmt(m.income)}</b>`)}
+      ${li(hasPay(m) ? `Зарплаты: 10-го <b class="num">${fmt(m.pay.p10)}</b>, 25-го <b class="num">${fmt(m.pay.p25)}</b>` : `Бюджет: <b class="num">${fmt(incomeOf(m))}</b>`)}
       ${li(`${keep.length} ${plural(keep.length,"статья","статьи","статей")} с теми же суммами, отметки сбросятся`)}
       ${moved.length ? li(`Перенесённые: ${moved.map(e=>esc(e.name)).join(", ")}`) : ""}
       ${dropped.length ? li(`Не повторятся купленные разовые: ${dropped.map(e=>esc(e.name)).join(", ")}`) : ""}
@@ -901,7 +1111,7 @@ document.addEventListener("click", ev => {
     case "auth-mode": S.authMode = id; render(); break;
     case "account": sheetAccount(); break;
     case "logout": closeSheet(); sb.auth.signOut(); break;
-    case "income": sheetIncome(); break;
+    case "income": case "plan": sheetPlan(); break;
     case "toggle": mutate(m => { const e = m.envelopes.find(x=>x.id===id); e.done = !e.done; }); break;
     case "visit": { const i = +t.dataset.i; mutate(m => { const e = m.envelopes.find(x=>x.id===id); e.visits = (e.visits||0) > i ? i : i+1; }); break; }
     case "buy": { const e = S.months[S.view].envelopes.find(x=>x.id===id); if(e.bought) mutate(m => { const x = m.envelopes.find(y=>y.id===id); x.bought=false; x.actual=null; }); else sheetBuy(id); break; }
